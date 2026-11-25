@@ -1,0 +1,47 @@
+:root {
+  font: 15px/1.5 system-ui, sans-serif;
+  color: #172332;
+  background: #f4f6f8;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+.container { width: min(1200px, calc(100% - 40px)); margin-inline: auto; }
+.top { background: #19293b; color: white; padding-block: 21px; }
+h1, h2 { margin: 0; line-height: 1.2; }
+h1 { font-size: 1.55rem; }
+h2 { font-size: 1.2rem; }
+main { padding-block: 28px; }
+.layout { display: grid; gap: 20px; grid-template-columns: minmax(285px, 335px) minmax(0, 1fr); align-items: start; }
+.panel { min-width: 0; background: white; padding: 22px; border: 1px solid #dbe2ea; border-radius: 8px; }
+fieldset { padding: 0; margin: 18px 0 0; border: 0; min-width: 0; display: grid; gap: 14px; }
+label { display: grid; gap: 5px; font-weight: 600; min-width: 0; }
+.row { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 5fr); gap: 10px; }
+input, button { font: inherit; border: 1px solid #a5b3c3; border-radius: 5px; }
+input { min-width: 0; width: 100%; padding: 8px 9px; color: inherit; background: white; }
+button { padding: 6px 10px; color: #21354d; background: #fff; cursor: pointer; }
+button:hover { background: #eef3f8; }
+button:disabled { opacity: 0.55; cursor: default; }
+.primary { background: #234e76; color: white; border-color: #234e76; padding: 8px 14px; }
+.primary:hover { background: #183d60; }
+.buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+:focus-visible { outline: 2px solid #236e9a; outline-offset: 2px; }
+.list-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; justify-content: space-between; }
+.total { color: #44556a; }
+.total strong { margin-left: 4px; color: #172332; }
+.table-scroll { overflow-x: auto; margin-top: 14px; }
+table { width: 100%; min-width: 480px; border-collapse: collapse; }
+th, td { padding: 10px 8px; border-bottom: 1px solid #e0e6ed; text-align: left; }
+th { font-size: 0.91rem; color: #425469; }
+td:first-child { overflow-wrap: anywhere; min-width: 125px; }
+.customer { display: block; color: #4f6073; }
+.numeric { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.empty { color: #4f6073; margin-bottom: 0; }
+.feedback p { margin: 0 0 14px; padding: 9px 13px; border-radius: 5px; }
+.error { color: #81242c; background: #fdecef; }
+.success { color: #215339; background: #e6f4eb; }
+
+@media (max-width: 820px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+}
