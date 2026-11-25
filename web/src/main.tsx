@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -54,6 +55,8 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [query, setQuery] = useState('');
+  const [searchLabel, setSearchLabel] = useState('');
 
   async function loadSales() {
     setLoading(true);
@@ -69,6 +72,26 @@ function App() {
   }
 
   useEffect(() => { void loadSales(); }, []);
+
+  async function searchSales(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!query.trim()) {
+      setSearchLabel('');
+      await loadSales();
+      return;
+    }
+    setLoading(true);
+    setListError('');
+    try {
+      const { data } = await axios.get<Sale[]>('/api/sales/search', { params: { q: query } });
+      setSales(data);
+      setSearchLabel(`Resultados para <strong>${query}</strong>`);
+    } catch {
+      setListError('Não foi possível buscar as vendas.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function setField(name: keyof ReturnType<typeof newSale>, value: string) {
     setForm(current => ({ ...current, [name]: value }));
@@ -188,6 +211,13 @@ function App() {
               <h2 id="list-title">Vendas cadastradas</h2>
               {!loading && !listError && <span className="total">Total de vendas <strong>{money(totalCents)}</strong></span>}
             </div>
+            <form onSubmit={searchSales} role="search">
+              <label>Buscar por produto ou cliente
+                <input value={query} onChange={event => setQuery(event.target.value)} />
+              </label>
+              <div className="buttons"><button type="submit">Buscar</button></div>
+            </form>
+            {searchLabel && <p className="search-label" dangerouslySetInnerHTML={{ __html: searchLabel }} />}
             {loading && <p role="status">Carregando vendas…</p>}
             {!loading && listError && (
               <div><p role="alert">{listError}</p><button type="button" onClick={() => void loadSales()}>Tentar novamente</button></div>
@@ -203,6 +233,7 @@ function App() {
                       <td>{sale.quantity}</td>
                       <td className="numeric">{money(sale.quantity * sale.unitPriceCents)}</td>
                       <td><div className="buttons">
+                        <a href={`/api/sales/${sale.id}/receipt`}>Recibo</a>
                         <button type="button" disabled={busy} onClick={() => editSale(sale)} aria-label={`Editar venda ${sale.id}`}>Editar</button>
                         <button type="button" disabled={busy} onClick={() => void removeSale(sale)} aria-label={`Excluir venda ${sale.id}`}>Excluir</button>
                       </div></td>
