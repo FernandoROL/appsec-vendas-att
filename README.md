@@ -1,9 +1,5 @@
 # Controle de vendas
 
-> **⚠️ Projeto de laboratório de AppSec — contém vulnerabilidades propositais (código e dependências).**
-> Execute somente em ambiente local controlado. Não publique em servidores, redes compartilhadas ou na internet.
-> O `compose.yaml` publica a porta apenas em `127.0.0.1`; não altere isso.
-
 Aplicação local de uso individual com React, TypeScript, Express e MySQL. Cadastra, lista, atualiza e exclui vendas. Cada venda guarda produto, cliente, quantidade, preço unitário e data. O servidor registra valores em centavos inteiros e a interface mostra os totais em reais.
 
 ## Executar com Docker
