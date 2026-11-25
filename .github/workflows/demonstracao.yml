@@ -1,0 +1,41 @@
+name: Demonstração do CRUD
+on:
+  push:
+    branches: [appsec/correcoes]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  demonstrar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Iniciar MySQL e API com credenciais temporárias
+        run: |
+          for key in MYSQL_PASSWORD MYSQL_ROOT_PASSWORD ADMIN_PASSWORD; do
+            value=$(openssl rand -hex 24)
+            echo "::add-mask::$value"
+            echo "$key=$value" >> "$GITHUB_ENV"
+            export "$key=$value"
+          done
+          docker compose up --build -d --wait
+          docker compose ps
+          test "$(docker compose exec -T app id -u)" -ne 0
+      - name: Testar vendas e controles com dados fictícios
+        env:
+          DEMO_CHROME: /usr/bin/google-chrome
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src --user "$(id -u):$(id -g)" -e HOME=/tmp node:24-bookworm-slim sh -c 'npm ci && npm test'
+          node test/demo.mjs | tee demonstracao.txt
+        shell: bash
+      - name: Salvar tela e transcrição
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: demonstracao-crud
+          path: |
+            demonstracao.png
+            demonstracao.txt
+          if-no-files-found: error
+      - if: always()
+        run: docker compose down -v

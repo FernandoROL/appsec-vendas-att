@@ -1,25 +1,29 @@
-// Gera um resumo mensal de vendas consultando a API local.
-// Uso: node scripts/relatorio.mjs --url http://127.0.0.1:8080 [--config scripts/relatorio.ini]
-import fs from 'fs';
-import _ from 'lodash';
+// Resume as vendas por mês. Aceita --url e --config com [api] url no INI.
+import fs from 'node:fs';
+import { parseArgs } from 'node:util';
 import ini from 'ini';
-import minimist from 'minimist';
-import moment from 'moment';
-import fetch from 'node-fetch';
 
-const args = minimist(process.argv.slice(2), { string: ['url', 'config'], default: { url: 'http://127.0.0.1:8080' } });
-const config = args.config ? ini.parse(fs.readFileSync(args.config, 'utf-8')) : {};
-const baseUrl = config.api?.url ?? args.url;
+const { values } = parseArgs({ options: {
+  url: { type: 'string', default: 'http://127.0.0.1:8080' },
+  config: { type: 'string' }
+} });
+const config = values.config ? ini.parse(fs.readFileSync(values.config, 'utf8')) : {};
+const endpoint = new URL('/api/sales', config.api?.url ?? values.url);
+const response = await fetch(endpoint, { redirect: 'error', signal: AbortSignal.timeout(10000) });
+if (!response.ok) throw new Error(`Falha ao consultar a API (HTTP ${response.status}).`);
 
-const response = await fetch(`${baseUrl}/api/sales`);
-if (!response.ok) {
-  console.error(`Falha ao consultar a API (HTTP ${response.status}).`);
-  process.exit(1);
+const totals = new Map();
+for (const sale of await response.json()) {
+  if (typeof sale.soldOn !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(sale.soldOn)) {
+    throw new Error('A API retornou uma data de venda inválida.');
+  }
+  const month = sale.soldOn.slice(0, 7);
+  const entry = totals.get(month) ?? { count: 0, cents: 0 };
+  entry.count++;
+  entry.cents += sale.quantity * sale.unitPriceCents;
+  totals.set(month, entry);
 }
-const sales = await response.json();
-
-const byMonth = _.groupBy(sales, sale => moment(sale.soldOn).format('YYYY-MM'));
-for (const month of Object.keys(byMonth).sort()) {
-  const cents = _.sumBy(byMonth[month], sale => sale.quantity * sale.unitPriceCents);
-  console.log(`${month}: ${byMonth[month].length} venda(s), R$ ${(cents / 100).toFixed(2)}`);
+for (const month of [...totals.keys()].sort()) {
+  const { count, cents } = totals.get(month);
+  console.log(`${month}: ${count} venda(s), R$ ${(cents / 100).toFixed(2)}`);
 }

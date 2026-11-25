@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -83,9 +82,9 @@ function App() {
     setLoading(true);
     setListError('');
     try {
-      const { data } = await axios.get<Sale[]>('/api/sales/search', { params: { q: query } });
-      setSales(data);
-      setSearchLabel(`Resultados para <strong>${query}</strong>`);
+      const response = await request('/api/sales/search?' + new URLSearchParams({ q: query }));
+      setSales(await response.json());
+      setSearchLabel(query);
     } catch {
       setListError('Não foi possível buscar as vendas.');
     } finally {
@@ -217,7 +216,7 @@ function App() {
               </label>
               <div className="buttons"><button type="submit">Buscar</button></div>
             </form>
-            {searchLabel && <p className="search-label" dangerouslySetInnerHTML={{ __html: searchLabel }} />}
+            {searchLabel && <p className="search-label">Resultados para <strong>{searchLabel}</strong></p>}
             {loading && <p role="status">Carregando vendas…</p>}
             {!loading && listError && (
               <div><p role="alert">{listError}</p><button type="button" onClick={() => void loadSales()}>Tentar novamente</button></div>

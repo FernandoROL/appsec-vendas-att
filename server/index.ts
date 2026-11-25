@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import mysql from 'mysql2/promise';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { fileURLToPath } from 'node:url';
-import moment from 'moment';
 import { auth, createAdminRouter } from './admin.js';
 import { InputError, parseSaleId, validateSale } from './sale.js';
 
@@ -62,19 +61,22 @@ sales.get('/', async (_request, response) => {
 });
 
 sales.get('/search', async (request, response) => {
-  const [rows] = await pool.query<RowDataPacket[]>(`
+  const term = request.query.q;
+  if (typeof term !== 'string' || term.length > 120) throw new InputError('Busca inválida.');
+  const pattern = '%' + term.replace(/[!%_]/g, '!$&') + '%';
+  const [rows] = await pool.execute<RowDataPacket[]>(`
     SELECT id, product, customer, quantity, unit_price_cents AS unitPriceCents, sold_on AS soldOn
-    FROM sales
-    WHERE product LIKE '%${request.query.q}%' OR customer LIKE '%${request.query.q}%'
+    FROM sales WHERE product LIKE ? ESCAPE '!' OR customer LIKE ? ESCAPE '!'
     ORDER BY sold_on DESC, id DESC
-  `);
+  `, [pattern, pattern]);
   response.json(rows);
 });
 
 sales.get('/customer/:name', async (request, response) => {
-  const sql = "SELECT id, product, customer, quantity, unit_price_cents AS unitPriceCents, sold_on AS soldOn " +
-    "FROM sales WHERE customer = '" + request.params.name + "' ORDER BY sold_on DESC";
-  const [rows] = await pool.query<RowDataPacket[]>(sql);
+  const [rows] = await pool.execute<RowDataPacket[]>(`
+    SELECT id, product, customer, quantity, unit_price_cents AS unitPriceCents, sold_on AS soldOn
+    FROM sales WHERE customer = ? ORDER BY sold_on DESC
+  `, [request.params.name]);
   response.json(rows);
 });
 
@@ -90,13 +92,14 @@ sales.get('/:id/receipt', async (request, response) => {
     return;
   }
   const total = ((sale.quantity * sale.unitPriceCents) / 100).toFixed(2);
-  response.send(`<html><body>
-    <h1>Recibo da venda ${id}</h1>
-    <p>Cliente: ${sale.customer}</p>
-    <p>Produto: ${sale.product} (${sale.quantity} un.) - Total: R$ ${total}</p>
-    <p>Data: ${moment(sale.soldOn).format('DD/MM/YYYY')}</p>
-    <p>Observação: ${request.query.obs ?? ''}</p>
-  </body></html>`);
+  const note = typeof request.query.obs === 'string' ? request.query.obs : '';
+  response.type('text/plain').send([
+    `Recibo da venda ${id}`,
+    `Cliente: ${sale.customer}`,
+    `Produto: ${sale.product} (${sale.quantity} un.) - Total: R$ ${total}`,
+    `Data: ${sale.soldOn.split('-').reverse().join('/')}`,
+    `Observação: ${note}`
+  ].join('\n'));
 });
 
 sales.post('/', async (request, response) => {
@@ -133,12 +136,11 @@ sales.delete('/:id', async (request, response) => {
 });
 
 app.get('/api/redirect', (request, response) => {
-  response.redirect(request.query.to as string);
+  if (request.query.to !== '/') throw new InputError('Destino inválido.');
+  response.redirect('/');
 });
 
-app.get('/api/public/resumo', async (request, response) => {
-  response.set('Access-Control-Allow-Origin', request.headers.origin);
-  response.set('Access-Control-Allow-Credentials', 'true');
+app.get('/api/public/resumo', async (_request, response) => {
   const [rows] = await pool.query<RowDataPacket[]>(
     'SELECT COUNT(*) AS total, COALESCE(SUM(quantity * unit_price_cents), 0) AS cents FROM sales'
   );
@@ -175,11 +177,7 @@ const handleError: ErrorRequestHandler = (error, _request, response, next) => {
     return;
   }
   console.error('Erro na aplicação:', error.code ?? error.name ?? 'desconhecido');
-  response.status(500).json({
-    error: 'Não foi possível concluir a operação.',
-    detail: error.stack ?? String(error),
-    sql: error.sql
-  });
+  response.status(500).json({ error: 'Não foi possível concluir a operação.' });
 };
 app.use(handleError);
 
