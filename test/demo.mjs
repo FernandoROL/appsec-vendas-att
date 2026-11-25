@@ -1,11 +1,13 @@
 // Executar somente com a instância isolada do job de demonstração.
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
+import { promisify } from 'node:util';
+const capture = promisify(execFile);
 
 const base = 'http://127.0.0.1:8080';
 async function api(method, route, status, body, token) {
   const res = await fetch(base + route, { method, redirect: 'manual', headers: {
-    'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {})
+    'Content-Type': 'application/json', Connection: 'close', ...(token ? { Authorization: 'Bearer ' + token } : {})
   }, body: body === undefined ? undefined : JSON.stringify(body) });
   assert.equal(res.status, status, method + ' ' + route.split('?')[0]);
   console.log(method, route.split('?')[0], res.status);
@@ -47,9 +49,9 @@ try {
   assert.equal((await api('GET','/api/redirect?to=%2F',302)).headers.get('location'),'/');
   const chrome = process.env.DEMO_CHROME;
   if (chrome) {
-    execFileSync(chrome,['--headless','--disable-gpu','--disable-dev-shm-usage','--hide-scrollbars',
+    await capture(chrome,['--headless','--disable-gpu','--disable-dev-shm-usage','--hide-scrollbars',
       '--user-data-dir=/tmp/vendas-chrome','--window-size=1380,900','--virtual-time-budget=6000',
-      '--screenshot=demonstracao.png',base],{stdio:'ignore'});
+      '--screenshot=demonstracao.png',base],{timeout: 60000});
   }
 } finally {
   await api('DELETE','/api/sales/' + id,204);
