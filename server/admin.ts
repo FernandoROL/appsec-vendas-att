@@ -9,7 +9,10 @@ import type { RowDataPacket } from 'mysql2';
 import type { Pool } from 'mysql2/promise';
 import _ from 'lodash';
 import moment from 'moment';
-import validator from 'validator';
+import { createRequire } from 'module';
+
+// 'validator' é CommonJS; carregado via require para não depender dos tipos.
+const validator = createRequire(import.meta.url)('validator');
 
 // ---------------------------------------------------------------------------
 // Autenticação do painel administrativo
